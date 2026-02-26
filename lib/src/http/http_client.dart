@@ -4,7 +4,9 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 
 import '../config.dart';
+import '../errors/error_sanitizer.dart';
 import '../errors/huefy_error.dart';
+import '../security/security.dart' as security;
 import '../utils/version.dart';
 import 'circuit_breaker.dart';
 import 'retry_handler.dart';
@@ -47,11 +49,27 @@ class SdkHttpClient {
 
     return _retryHandler.execute(() async {
       return _circuitBreaker.execute(() async {
+        final bodyString = body != null ? jsonEncode(body) : '';
+
         final headers = <String, String>{
           'Content-Type': 'application/json',
           'X-API-Key': _config.apiKey,
           'User-Agent': 'huefy-dart/$sdkVersion',
         };
+
+        if (_config.enableRequestSigning) {
+          final timestamp =
+              DateTime.now().millisecondsSinceEpoch.toString();
+          final message = '$timestamp.$bodyString';
+          final signature =
+              security.signPayload(_config.apiKey, message);
+
+          headers['X-Timestamp'] = timestamp;
+          headers['X-Signature'] = signature;
+          headers['X-Key-Id'] = _config.apiKey.length >= 8
+              ? _config.apiKey.substring(0, 8)
+              : _config.apiKey;
+        }
 
         http.Response response;
         try {
@@ -63,12 +81,12 @@ class SdkHttpClient {
               break;
             case 'POST':
               response = await _inner
-                  .post(url, headers: headers, body: jsonEncode(body))
+                  .post(url, headers: headers, body: bodyString.isNotEmpty ? bodyString : null)
                   .timeout(_config.timeout);
               break;
             case 'PUT':
               response = await _inner
-                  .put(url, headers: headers, body: jsonEncode(body))
+                  .put(url, headers: headers, body: bodyString.isNotEmpty ? bodyString : null)
                   .timeout(_config.timeout);
               break;
             case 'DELETE':
@@ -78,7 +96,7 @@ class SdkHttpClient {
               break;
             case 'PATCH':
               response = await _inner
-                  .patch(url, headers: headers, body: jsonEncode(body))
+                  .patch(url, headers: headers, body: bodyString.isNotEmpty ? bodyString : null)
                   .timeout(_config.timeout);
               break;
             default:
@@ -91,21 +109,23 @@ class SdkHttpClient {
           throw HuefyError.timeout(cause: e);
         } on http.ClientException catch (e) {
           throw HuefyError.network(
-            message: 'HTTP request failed: ${e.message}',
+            message: _maybeSanitize('HTTP request failed: ${e.message}'),
             cause: e,
           );
         } catch (e) {
           if (e is HuefyError) rethrow;
           throw HuefyError.network(
-            message: 'Unexpected error: $e',
+            message: _maybeSanitize('Unexpected error: $e'),
             cause: e,
           );
         }
 
         if (response.statusCode >= 400) {
+          final requestId = response.headers['x-request-id'];
           throw HuefyError.fromStatus(
             response.statusCode,
-            response.body,
+            _maybeSanitize(response.body),
+            requestId: requestId,
           );
         }
 
@@ -113,6 +133,11 @@ class SdkHttpClient {
       });
     });
   }
+
+  /// Sanitizes [input] if error sanitization is enabled; otherwise returns
+  /// [input] unchanged.
+  String _maybeSanitize(String input) =>
+      _config.enableErrorSanitization ? sanitizeErrorMessage(input) : input;
 
   /// Closes the underlying HTTP client.
   void close() {
