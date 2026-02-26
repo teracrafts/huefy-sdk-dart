@@ -22,6 +22,9 @@ class HuefyError implements Exception {
   /// Seconds to wait before retrying (from Retry-After header).
   final int? retryAfter;
 
+  /// The server-assigned request ID, if available.
+  final String? requestId;
+
   /// The underlying cause, if any.
   final Object? cause;
 
@@ -31,6 +34,7 @@ class HuefyError implements Exception {
     this.statusCode,
     this.field,
     this.retryAfter,
+    this.requestId,
     this.cause,
   });
 
@@ -122,39 +126,65 @@ class HuefyError implements Exception {
   }
 
   /// Creates an error from an HTTP status code and response body.
-  factory HuefyError.fromStatus(int statusCode, String body) {
+  factory HuefyError.fromStatus(int statusCode, String body, {String? requestId}) {
     switch (statusCode) {
       case 401:
-        return HuefyError.auth();
+        return HuefyError._(
+          message: 'Invalid or expired API key',
+          errorCode: ErrorCode.authentication,
+          statusCode: 401,
+          requestId: requestId,
+        );
+      case 408:
+        return HuefyError._(
+          message: 'Request timeout: $body',
+          errorCode: ErrorCode.timeout,
+          statusCode: 408,
+          requestId: requestId,
+        );
       case 403:
         return HuefyError._(
           message: 'Insufficient permissions',
           errorCode: ErrorCode.authorization,
           statusCode: 403,
+          requestId: requestId,
         );
       case 404:
         return HuefyError._(
           message: 'Resource not found',
           errorCode: ErrorCode.notFound,
           statusCode: 404,
+          requestId: requestId,
         );
       case 422:
-        return HuefyError.validation(
+        return HuefyError._(
           message: 'Validation failed: $body',
+          errorCode: ErrorCode.validation,
+          requestId: requestId,
         );
       case 429:
-        return HuefyError.rateLimited();
+        return HuefyError._(
+          message: 'Rate limit exceeded',
+          errorCode: ErrorCode.rateLimited,
+          statusCode: 429,
+          requestId: requestId,
+        );
       default:
         if (statusCode >= 500) {
-          return HuefyError.server(
+          return HuefyError._(
             message: 'Server error: $body',
+            errorCode: statusCode == 503
+                ? ErrorCode.serviceUnavailable
+                : ErrorCode.serverError,
             statusCode: statusCode,
+            requestId: requestId,
           );
         }
         return HuefyError._(
           message: 'Unexpected status $statusCode: $body',
           errorCode: ErrorCode.unknown,
           statusCode: statusCode,
+          requestId: requestId,
         );
     }
   }
@@ -166,5 +196,8 @@ class HuefyError implements Exception {
   String get sanitizedMessage => sanitizeErrorMessage(message);
 
   @override
-  String toString() => '[${errorCode.label}] $message';
+  String toString() {
+    final prefix = requestId != null ? '[${errorCode.label}] [req:$requestId]' : '[${errorCode.label}]';
+    return '$prefix $message';
+  }
 }
