@@ -67,6 +67,12 @@ class HuefyConfig {
   /// Enable debug logging.
   final bool debug;
 
+  /// Enable HMAC-SHA256 request signing.
+  final bool enableRequestSigning;
+
+  /// Enable sanitization of sensitive data in error messages.
+  final bool enableErrorSanitization;
+
   /// Creates a new [HuefyConfig].
   ///
   /// The [apiKey] parameter is required. All other parameters have sensible
@@ -78,7 +84,19 @@ class HuefyConfig {
     this.retry = const RetryConfig(),
     this.circuitBreaker = const CircuitBreakerConfig(),
     this.debug = false,
-  }) : baseUrl = baseUrl ?? _defaultBaseUrl();
+    this.enableRequestSigning = false,
+    this.enableErrorSanitization = true,
+  }) : baseUrl = baseUrl ?? _defaultBaseUrl() {
+    assert(timeout.inMilliseconds > 0, 'timeout must be > 0');
+    assert(
+      retry.initialDelay.inMilliseconds > 0,
+      'retry.initialDelay must be > 0',
+    );
+    assert(
+      circuitBreaker.resetTimeout.inMilliseconds > 0,
+      'circuitBreaker.resetTimeout must be > 0',
+    );
+  }
 
   static String _defaultBaseUrl() {
     final envMode = Platform.environment['HUEFY_MODE'] ?? '';
