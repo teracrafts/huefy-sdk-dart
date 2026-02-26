@@ -100,7 +100,12 @@ List<PiiDetection> detectPotentialPii(Map<String, String> fields) {
 
 /// Signs [payload] with [secret] using HMAC-SHA256 and returns the
 /// hex-encoded digest.
+///
+/// Throws [ArgumentError] if [secret] or [payload] is empty.
 String signPayload(String secret, String payload) {
+  if (secret.isEmpty) throw ArgumentError('secret cannot be empty');
+  if (payload.isEmpty) throw ArgumentError('payload cannot be empty');
+
   final key = utf8.encode(secret);
   final data = utf8.encode(payload);
   final hmacSha256 = Hmac(sha256, key);
@@ -108,18 +113,15 @@ String signPayload(String secret, String payload) {
   return digest.toString();
 }
 
-/// Creates a composite request signature from method, path, body, and
-/// timestamp.
+/// Creates a composite request signature from the body and timestamp.
 ///
-/// The canonical string is `"$method\n$path\n$body\n$timestamp"`.
+/// The canonical string is `"$timestamp.$body"`.
 String createRequestSignature(
   String secret,
-  String method,
-  String path,
   String body,
   int timestamp,
 ) {
-  final canonical = '$method\n$path\n$body\n$timestamp';
+  final canonical = '$timestamp.$body';
   return signPayload(secret, canonical);
 }
 
