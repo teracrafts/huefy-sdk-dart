@@ -132,51 +132,39 @@ void main() {
     test('createRequestSignature is deterministic', () {
       final sig1 = createRequestSignature(
         'webhook-secret',
-        'POST',
-        '/api/v1/emails/send',
         '{"to":"a"}',
         1000,
       );
       final sig2 = createRequestSignature(
         'webhook-secret',
-        'POST',
-        '/api/v1/emails/send',
         '{"to":"a"}',
         1000,
       );
       expect(sig1, equals(sig2));
     });
 
-    test('createRequestSignature varies with method', () {
-      final sigPost = createRequestSignature(
+    test('createRequestSignature varies with body', () {
+      final sig1 = createRequestSignature(
         'webhook-secret',
-        'POST',
-        '/path',
-        '{}',
+        '{"to":"a"}',
         1,
       );
-      final sigGet = createRequestSignature(
+      final sig2 = createRequestSignature(
         'webhook-secret',
-        'GET',
-        '/path',
-        '{}',
+        '{"to":"b"}',
         1,
       );
-      expect(sigPost, isNot(equals(sigGet)));
+      expect(sig1, isNot(equals(sig2)));
     });
 
     test('createRequestSignature varies with timestamp', () {
       final sig1 = createRequestSignature(
         'secret',
-        'POST',
-        '/path',
         '{}',
         1000,
       );
       final sig2 = createRequestSignature(
         'secret',
-        'POST',
-        '/path',
         '{}',
         2000,
       );
