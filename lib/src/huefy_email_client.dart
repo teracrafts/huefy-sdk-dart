@@ -6,6 +6,7 @@ import 'http/http_client.dart';
 import 'models/email_models.dart';
 import 'models/email_provider.dart';
 import 'security/security.dart' as security;
+import 'utils/logger.dart';
 import 'validators/email_validators.dart';
 
 /// Email-focused client for the Huefy Dart SDK.
@@ -29,6 +30,7 @@ class HuefyEmailClient {
 
   final HuefyConfig _config;
   late final SdkHttpClient _http;
+  late final Logger _logger;
   bool _closed = false;
 
   /// Creates a new [HuefyEmailClient] with the given configuration.
@@ -42,6 +44,7 @@ class HuefyEmailClient {
       );
     }
     _http = SdkHttpClient(config: _config);
+    _logger = _config.debug ? ConsoleLogger() : NoopLogger();
   }
 
   /// Sends a single email using the default provider (SES).
@@ -62,12 +65,13 @@ class HuefyEmailClient {
       );
     }
 
-    // Check template data for potential PII before sending.
+    // Warn if potential PII fields are detected in template data.
     final piiDetections = security.detectPotentialPii(data);
     if (piiDetections.isNotEmpty) {
       final fields = piiDetections.map((d) => d.toString()).join('; ');
-      throw HuefyError.validation(
-        message: 'Potential PII detected in template data: $fields',
+      _logger.warn(
+        'Potential PII detected in template data: [$fields]. '
+        'Consider removing or encrypting these fields.',
       );
     }
 
