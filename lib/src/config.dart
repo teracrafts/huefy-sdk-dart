@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'platform_stub.dart' if (dart.library.io) 'platform_io.dart';
 
 /// Configuration for retry behavior on failed requests.
 class RetryConfig {
@@ -87,20 +87,28 @@ class HuefyConfig {
     this.enableRequestSigning = false,
     this.enableErrorSanitization = true,
   }) : baseUrl = baseUrl ?? _defaultBaseUrl() {
-    assert(timeout.inMilliseconds > 0, 'timeout must be > 0');
-    assert(
-      retry.initialDelay.inMilliseconds > 0,
-      'retry.initialDelay must be > 0',
-    );
-    assert(
-      circuitBreaker.resetTimeout.inMilliseconds > 0,
-      'circuitBreaker.resetTimeout must be > 0',
-    );
+    if (timeout.inMilliseconds <= 0) {
+      throw ArgumentError.value(timeout, 'timeout', 'must be > 0');
+    }
+    if (retry.initialDelay.inMilliseconds <= 0) {
+      throw ArgumentError.value(
+        retry.initialDelay,
+        'retry.initialDelay',
+        'must be > 0',
+      );
+    }
+    if (circuitBreaker.resetTimeout.inMilliseconds <= 0) {
+      throw ArgumentError.value(
+        circuitBreaker.resetTimeout,
+        'circuitBreaker.resetTimeout',
+        'must be > 0',
+      );
+    }
   }
 
   static String _defaultBaseUrl() {
-    final envMode = Platform.environment['HUEFY_MODE'] ?? '';
-    if (envMode.toLowerCase() == 'development') {
+    final envMode = getEnvironmentVariable('HUEFY_MODE') ?? '';
+    if (envMode.toLowerCase() == 'local') {
       return 'https://api.huefy.on/api/v1/sdk';
     }
     return 'https://api.huefy.dev/api/v1/sdk';
