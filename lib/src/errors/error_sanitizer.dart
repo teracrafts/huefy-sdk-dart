@@ -2,17 +2,17 @@
 final List<_SanitizeRule> _sanitizeRules = [
   // API keys
   _SanitizeRule(
-    RegExp(r'(?i)(api[_-]?key|apikey|x-api-key)[=:\s]+\S+'),
+    RegExp(r'(api[_-]?key|apikey|x-api-key)[=:\s]+\S+', caseSensitive: false),
     r'$1=[REDACTED]',
   ),
   // Bearer tokens
   _SanitizeRule(
-    RegExp(r'(?i)(bearer\s+)\S+'),
+    RegExp(r'(bearer\s+)\S+', caseSensitive: false),
     r'$1[REDACTED]',
   ),
   // Authorization headers
   _SanitizeRule(
-    RegExp(r'(?i)(authorization)[=:\s]+\S+'),
+    RegExp(r'(authorization)[=:\s]+\S+', caseSensitive: false),
     r'$1=[REDACTED]',
   ),
   // Email addresses
@@ -22,7 +22,7 @@ final List<_SanitizeRule> _sanitizeRules = [
   ),
   // Generic secret / password / token fields
   _SanitizeRule(
-    RegExp(r'(?i)(password|secret|token|credential)[=:\s]+\S+'),
+    RegExp(r'(password|secret|token|credential)[=:\s]+\S+', caseSensitive: false),
     r'$1=[REDACTED]',
   ),
 ];
