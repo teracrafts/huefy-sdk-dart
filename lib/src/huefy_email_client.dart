@@ -27,6 +27,7 @@ import 'validators/email_validators.dart';
 /// ```
 class HuefyEmailClient {
   static const String _emailsSendPath = '/emails/send';
+  static const String _emailsBulkPath = '/emails/send-bulk';
 
   final HuefyConfig _config;
   late final SdkHttpClient _http;
@@ -92,62 +93,60 @@ class HuefyEmailClient {
     return SendEmailResponse.fromJson(json);
   }
 
-  /// Sends multiple emails in bulk.
+  /// Sends multiple emails in bulk using a shared template.
   ///
-  /// Each request is sent independently. Failures for individual emails
-  /// do not prevent remaining emails from being sent.
-  ///
-  /// Throws [HuefyError] if the bulk count validation fails.
-  Future<List<BulkEmailResult>> sendBulkEmails(
-    List<SendEmailRequest> requests,
-  ) async {
+  /// Throws [HuefyError] if validation fails.
+  Future<SendBulkEmailsResponse> sendBulkEmails(
+    String templateKey,
+    List<BulkRecipient> recipients, {
+    String? fromEmail,
+    String? fromName,
+    String? providerType,
+    int? batchSize,
+    String? correlationId,
+  }) async {
     _ensureNotClosed();
 
-    final countErr = validateBulkCount(requests.length);
+    final countErr = validateBulkCount(recipients.length);
     if (countErr != null) {
       throw HuefyError.validation(message: countErr);
     }
 
-    final results = <BulkEmailResult>[];
-
-    for (final request in requests) {
-      try {
-        final response = await sendEmail(
-          templateKey: request.templateKey,
-          data: request.data,
-          recipient: request.recipient,
-          provider: request.providerType,
-        );
-        results.add(BulkEmailResult(
-          email: request.recipient,
-          success: true,
-          result: response,
-        ));
-      } on HuefyError catch (e) {
-        results.add(BulkEmailResult(
-          email: request.recipient,
-          success: false,
-          error: BulkEmailError(
-            message: e.message,
-            code: e.errorCode.label,
-          ),
-        ));
-      }
+    final templateErr = validateTemplateKey(templateKey);
+    if (templateErr != null) {
+      throw HuefyError.validation(message: templateErr);
     }
 
-    return results;
+    final body = <String, dynamic>{
+      'templateKey': templateKey.trim(),
+      'recipients': recipients.map((r) => r.toJson()).toList(),
+      if (fromEmail != null) 'fromEmail': fromEmail,
+      if (fromName != null) 'fromName': fromName,
+      if (providerType != null) 'providerType': providerType,
+      if (batchSize != null) 'batchSize': batchSize,
+      if (correlationId != null) 'correlationId': correlationId,
+    };
+
+    final responseBody = await _http.request(
+      'POST',
+      _emailsBulkPath,
+      body: body,
+    );
+
+    final json = jsonDecode(responseBody) as Map<String, dynamic>;
+    return SendBulkEmailsResponse.fromJson(json);
   }
 
   /// Performs a health check against the API.
   ///
-  /// Returns an [EmailHealthResponse] if the API is reachable and healthy.
+  /// Returns a [HealthResponse] if the API is reachable and healthy.
   ///
   /// Throws [HuefyError] on failure.
-  Future<EmailHealthResponse> healthCheck() async {
+  Future<HealthResponse> healthCheck() async {
     _ensureNotClosed();
     final response = await _http.request('GET', '/health');
     final json = jsonDecode(response) as Map<String, dynamic>;
-    return EmailHealthResponse.fromJson(json);
+    return HealthResponse.fromJson(json);
   }
 
   /// Closes the client and releases resources.
