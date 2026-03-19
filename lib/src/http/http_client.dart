@@ -129,9 +129,37 @@ class SdkHttpClient {
           );
         }
 
+        _parseRateLimitHeaders(response);
+
         return response.body;
       });
     });
+  }
+
+  void _parseRateLimitHeaders(http.Response response) {
+    final limitStr     = response.headers['x-ratelimit-limit'];
+    final remainingStr = response.headers['x-ratelimit-remaining'];
+    final resetStr     = response.headers['x-ratelimit-reset'];
+
+    if (limitStr == null || remainingStr == null || resetStr == null) return;
+
+    final limit     = int.tryParse(limitStr);
+    final remaining = int.tryParse(remainingStr);
+    final resetSecs = int.tryParse(resetStr);
+
+    if (limit == null || remaining == null || resetSecs == null) return;
+
+    final info = RateLimitInfo(
+      limit: limit,
+      remaining: remaining,
+      resetAt: DateTime.fromMillisecondsSinceEpoch(resetSecs * 1000, isUtc: true),
+    );
+
+    _config.onRateLimitUpdate?.call(info);
+
+    if (limit > 0 && remaining < (limit * 0.2).floor()) {
+      _config.onRateLimitWarning?.call(info);
+    }
   }
 
   /// Sanitizes [input] if error sanitization is enabled; otherwise returns
