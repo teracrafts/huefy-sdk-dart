@@ -35,120 +35,190 @@ class SendEmailRequest {
   }
 }
 
-/// Response from the send email endpoint.
-class SendEmailResponse {
-  /// Whether the email was sent successfully.
-  final bool success;
-
-  /// A human-readable message from the server.
-  final String? message;
-
-  /// The unique identifier for the sent message.
+/// Status of a single recipient in an email send or bulk send operation.
+class RecipientStatus {
+  final String email;
+  final String status;
   final String? messageId;
+  final String? error;
+  final String? sentAt;
 
-  /// The provider that was used to deliver the email.
-  final String? provider;
-
-  SendEmailResponse({
-    required this.success,
-    this.message,
+  const RecipientStatus({
+    required this.email,
+    required this.status,
     this.messageId,
-    this.provider,
+    this.error,
+    this.sentAt,
   });
 
-  factory SendEmailResponse.fromJson(Map<String, dynamic> json) {
-    return SendEmailResponse(
-      success: json['success'] as bool? ?? false,
-      message: json['message'] as String?,
-      messageId: json['message_id'] as String?,
-      provider: json['provider'] as String?,
-    );
-  }
+  factory RecipientStatus.fromJson(Map<String, dynamic> json) => RecipientStatus(
+        email: json['email'] as String,
+        status: json['status'] as String,
+        messageId: json['messageId'] as String?,
+        error: json['error'] as String?,
+        sentAt: json['sentAt'] as String?,
+      );
 }
 
-/// Error details for a single email in a bulk operation.
-class BulkEmailError {
-  /// Error message describing what went wrong.
-  final String message;
+/// Data payload from the send email response.
+class SendEmailResponseData {
+  final String emailId;
+  final String status;
+  final List<RecipientStatus> recipients;
 
-  /// Error code string.
-  final String code;
-
-  BulkEmailError({
-    required this.message,
-    required this.code,
+  const SendEmailResponseData({
+    required this.emailId,
+    required this.status,
+    required this.recipients,
   });
 
-  factory BulkEmailError.fromJson(Map<String, dynamic> json) {
-    return BulkEmailError(
-      message: json['message'] as String,
-      code: json['code'] as String,
-    );
-  }
+  factory SendEmailResponseData.fromJson(Map<String, dynamic> json) =>
+      SendEmailResponseData(
+        emailId: json['emailId'] as String,
+        status: json['status'] as String,
+        recipients: (json['recipients'] as List)
+            .map((r) => RecipientStatus.fromJson(r as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+/// Response from the send email endpoint.
+class SendEmailResponse {
+  final bool success;
+  final SendEmailResponseData data;
+  final String correlationId;
+
+  const SendEmailResponse({
+    required this.success,
+    required this.data,
+    required this.correlationId,
+  });
+
+  factory SendEmailResponse.fromJson(Map<String, dynamic> json) => SendEmailResponse(
+        success: json['success'] as bool,
+        data: SendEmailResponseData.fromJson(json['data'] as Map<String, dynamic>),
+        correlationId: json['correlationId'] as String,
+      );
+}
+
+/// A recipient entry for bulk email sending.
+class BulkRecipient {
+  final String email;
+  final String type;
+  final Map<String, dynamic>? data;
+
+  const BulkRecipient({
+    required this.email,
+    this.type = 'to',
+    this.data,
+  });
 
   Map<String, dynamic> toJson() => {
-        'message': message,
-        'code': code,
+        'email': email,
+        'type': type,
+        if (data != null) 'data': data,
       };
 }
 
-/// Result of sending a single email in a bulk operation.
-class BulkEmailResult {
-  /// The recipient email address.
-  final String email;
+/// Data payload from the send-bulk response.
+class SendBulkEmailsResponseData {
+  final String batchId;
+  final String status;
+  final String templateKey;
+  final int totalRecipients;
+  final int successCount;
+  final int failureCount;
+  final int suppressedCount;
+  final String startedAt;
+  final String? completedAt;
+  final List<RecipientStatus> recipients;
 
-  /// Whether this individual email was sent successfully.
-  final bool success;
-
-  /// The response if the email was sent successfully.
-  final SendEmailResponse? result;
-
-  /// The error if the email failed to send.
-  final BulkEmailError? error;
-
-  BulkEmailResult({
-    required this.email,
-    required this.success,
-    this.result,
-    this.error,
+  const SendBulkEmailsResponseData({
+    required this.batchId,
+    required this.status,
+    required this.templateKey,
+    required this.totalRecipients,
+    required this.successCount,
+    required this.failureCount,
+    required this.suppressedCount,
+    required this.startedAt,
+    this.completedAt,
+    required this.recipients,
   });
 
-  factory BulkEmailResult.fromJson(Map<String, dynamic> json) {
-    return BulkEmailResult(
-      email: json['email'] as String,
-      success: json['success'] as bool,
-      result: json['result'] != null
-          ? SendEmailResponse.fromJson(json['result'] as Map<String, dynamic>)
-          : null,
-      error: json['error'] != null
-          ? BulkEmailError.fromJson(json['error'] as Map<String, dynamic>)
-          : null,
-    );
-  }
+  factory SendBulkEmailsResponseData.fromJson(Map<String, dynamic> json) =>
+      SendBulkEmailsResponseData(
+        batchId: json['batchId'] as String,
+        status: json['status'] as String,
+        templateKey: json['templateKey'] as String,
+        totalRecipients: json['totalRecipients'] as int,
+        successCount: json['successCount'] as int,
+        failureCount: json['failureCount'] as int,
+        suppressedCount: json['suppressedCount'] as int,
+        startedAt: json['startedAt'] as String,
+        completedAt: json['completedAt'] as String?,
+        recipients: (json['recipients'] as List)
+            .map((r) => RecipientStatus.fromJson(r as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+/// Response from the send-bulk endpoint.
+class SendBulkEmailsResponse {
+  final bool success;
+  final SendBulkEmailsResponseData data;
+  final String correlationId;
+
+  const SendBulkEmailsResponse({
+    required this.success,
+    required this.data,
+    required this.correlationId,
+  });
+
+  factory SendBulkEmailsResponse.fromJson(Map<String, dynamic> json) =>
+      SendBulkEmailsResponse(
+        success: json['success'] as bool,
+        data: SendBulkEmailsResponseData.fromJson(
+            json['data'] as Map<String, dynamic>),
+        correlationId: json['correlationId'] as String,
+      );
+}
+
+/// Data payload from the health check response.
+class HealthResponseData {
+  final String status;
+  final String timestamp;
+  final String version;
+
+  const HealthResponseData({
+    required this.status,
+    required this.timestamp,
+    required this.version,
+  });
+
+  factory HealthResponseData.fromJson(Map<String, dynamic> json) =>
+      HealthResponseData(
+        status: json['status'] as String,
+        timestamp: json['timestamp'] as String,
+        version: json['version'] as String,
+      );
 }
 
 /// Response from the health check endpoint.
-class EmailHealthResponse {
-  /// The status of the API (e.g., "ok").
-  final String status;
+class HealthResponse {
+  final bool success;
+  final HealthResponseData data;
+  final String correlationId;
 
-  /// Server timestamp.
-  final String timestamp;
-
-  /// The API version string.
-  final String? version;
-
-  EmailHealthResponse({
-    required this.status,
-    required this.timestamp,
-    this.version,
+  const HealthResponse({
+    required this.success,
+    required this.data,
+    required this.correlationId,
   });
 
-  factory EmailHealthResponse.fromJson(Map<String, dynamic> json) {
-    return EmailHealthResponse(
-      status: json['status'] as String,
-      timestamp: json['timestamp'].toString(),
-      version: json['version'] as String?,
-    );
-  }
+  factory HealthResponse.fromJson(Map<String, dynamic> json) => HealthResponse(
+        success: json['success'] as bool,
+        data: HealthResponseData.fromJson(json['data'] as Map<String, dynamic>),
+        correlationId: json['correlationId'] as String,
+      );
 }
