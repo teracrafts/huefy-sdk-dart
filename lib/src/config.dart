@@ -1,5 +1,23 @@
 import 'platform_stub.dart' if (dart.library.io) 'platform_io.dart';
 
+/// Parsed rate-limit header values from an API response.
+class RateLimitInfo {
+  /// The request limit as reported by the server.
+  final int limit;
+
+  /// The number of remaining requests in the current window.
+  final int remaining;
+
+  /// The time at which the current rate-limit window resets.
+  final DateTime resetAt;
+
+  const RateLimitInfo({
+    required this.limit,
+    required this.remaining,
+    required this.resetAt,
+  });
+}
+
 /// Configuration for retry behavior on failed requests.
 class RetryConfig {
   /// Maximum number of retry attempts.
@@ -73,6 +91,12 @@ class HuefyConfig {
   /// Enable sanitization of sensitive data in error messages.
   final bool enableErrorSanitization;
 
+  /// Optional callback invoked with rate-limit info after every successful response.
+  final void Function(RateLimitInfo)? onRateLimitUpdate;
+
+  /// Optional callback invoked when remaining requests drop below 20% of the limit.
+  final void Function(RateLimitInfo)? onRateLimitWarning;
+
   /// Creates a new [HuefyConfig].
   ///
   /// The [apiKey] parameter is required. All other parameters have sensible
@@ -86,6 +110,8 @@ class HuefyConfig {
     this.debug = false,
     this.enableRequestSigning = false,
     this.enableErrorSanitization = true,
+    this.onRateLimitUpdate,
+    this.onRateLimitWarning,
   }) : baseUrl = baseUrl ?? _defaultBaseUrl() {
     if (timeout.inMilliseconds <= 0) {
       throw ArgumentError.value(timeout, 'timeout', 'must be > 0');
