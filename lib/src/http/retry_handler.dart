@@ -71,7 +71,7 @@ class RetryHandler {
 
   /// Calculates the retry delay for the given [attempt] number.
   ///
-  /// Uses exponential backoff with +/-25% multiplicative jitter,
+  /// Uses exponential backoff with +/-20% multiplicative jitter,
   /// capped at [maxDelay].
   Duration calculateDelay(int attempt) {
     final exponential = pow(backoffMultiplier, attempt.clamp(0, 30));
@@ -79,9 +79,9 @@ class RetryHandler {
     final baseMs = rawMs.clamp(0, maxDelay.inMilliseconds).toInt();
     final cappedMs = min(baseMs, maxDelay.inMilliseconds);
 
-    // Apply +/-25% multiplicative jitter (matching TypeScript SDK).
-    const jitterMin = 0.75;
-    const jitterMax = 1.25;
+    // Apply +/-20% multiplicative jitter.
+    const jitterMin = 0.8;
+    const jitterMax = 1.2;
     final jitterFactor =
         jitterMin + _random.nextDouble() * (jitterMax - jitterMin);
 
