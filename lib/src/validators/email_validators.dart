@@ -7,7 +7,7 @@ const int maxEmailLength = 254;
 const int maxTemplateKeyLength = 100;
 
 /// Maximum number of emails in a single bulk request.
-const int maxBulkEmails = 100;
+const int maxBulkEmails = 1000;
 
 /// Regex pattern for basic email validation.
 final RegExp _emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
