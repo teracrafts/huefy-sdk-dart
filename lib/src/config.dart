@@ -34,8 +34,8 @@ class RetryConfig {
 
   const RetryConfig({
     this.maxRetries = 3,
-    this.initialDelay = const Duration(milliseconds: 1000),
-    this.maxDelay = const Duration(seconds: 30),
+    this.initialDelay = const Duration(milliseconds: 500),
+    this.maxDelay = const Duration(seconds: 10),
     this.backoffMultiplier = 2.0,
   });
 }
