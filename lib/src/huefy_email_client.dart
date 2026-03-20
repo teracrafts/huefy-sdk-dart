@@ -112,6 +112,13 @@ class HuefyEmailClient {
       throw HuefyError.validation(message: countErr);
     }
 
+    for (var i = 0; i < recipients.length; i++) {
+      final emailErr = validateEmail(recipients[i].email);
+      if (emailErr != null) {
+        throw HuefyError.validation(message: 'recipients[$i]: $emailErr');
+      }
+    }
+
     final templateErr = validateTemplateKey(templateKey);
     if (templateErr != null) {
       throw HuefyError.validation(message: templateErr);
