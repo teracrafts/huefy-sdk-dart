@@ -3,32 +3,7 @@ import 'dart:convert';
 import 'config.dart';
 import 'errors/huefy_error.dart';
 import 'http/http_client.dart';
-
-/// Response from the health check endpoint.
-class HealthResponse {
-  /// The status of the API (e.g., "ok").
-  final String status;
-
-  /// The API version string.
-  final String version;
-
-  /// Server timestamp in milliseconds.
-  final int timestamp;
-
-  HealthResponse({
-    required this.status,
-    required this.version,
-    required this.timestamp,
-  });
-
-  factory HealthResponse.fromJson(Map<String, dynamic> json) {
-    return HealthResponse(
-      status: json['status'] as String,
-      version: json['version'] as String,
-      timestamp: json['timestamp'] as int,
-    );
-  }
-}
+import 'models/email_models.dart';
 
 /// The main SDK client for interacting with the Huefy API.
 ///
