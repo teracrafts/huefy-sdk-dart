@@ -16,8 +16,8 @@ class SendEmailRequest {
 
   SendEmailRequest({
     required this.templateKey,
-    required this.recipient,
     required this.data,
+    required this.recipient,
     this.providerType,
   });
 
