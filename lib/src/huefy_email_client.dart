@@ -78,8 +78,8 @@ class HuefyEmailClient {
 
     final request = SendEmailRequest(
       templateKey: templateKey.trim(),
-      recipient: recipient.trim(),
       data: data,
+      recipient: recipient.trim(),
       providerType: provider,
     );
 
@@ -96,14 +96,10 @@ class HuefyEmailClient {
   /// Sends multiple emails in bulk using a shared template.
   ///
   /// Throws [HuefyError] if validation fails.
-  Future<SendBulkEmailsResponse> sendBulkEmails(
-    String templateKey,
-    List<BulkRecipient> recipients, {
-    String? fromEmail,
-    String? fromName,
-    String? providerType,
-    int? batchSize,
-    String? correlationId,
+  Future<SendBulkEmailsResponse> sendBulkEmails({
+    required String templateKey,
+    required List<BulkRecipient> recipients,
+    EmailProvider? provider,
   }) async {
     _ensureNotClosed();
 
@@ -127,11 +123,7 @@ class HuefyEmailClient {
     final body = <String, dynamic>{
       'templateKey': templateKey.trim(),
       'recipients': recipients.map((r) => r.toJson()).toList(),
-      if (fromEmail != null) 'fromEmail': fromEmail,
-      if (fromName != null) 'fromName': fromName,
-      if (providerType != null) 'providerType': providerType,
-      if (batchSize != null) 'batchSize': batchSize,
-      if (correlationId != null) 'correlationId': correlationId,
+      if (provider != null) 'providerType': provider.value,
     };
 
     final responseBody = await _http.request(
