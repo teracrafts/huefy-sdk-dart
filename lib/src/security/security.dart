@@ -68,7 +68,7 @@ bool isPotentialPiiField(String fieldName) {
 /// Scans a map of key-value pairs for potential PII.
 ///
 /// Returns a list of [PiiDetection] entries describing each finding.
-List<PiiDetection> detectPotentialPii(Map<String, String> fields) {
+List<PiiDetection> detectPotentialPii(Map<String, dynamic> fields) {
   final detections = <PiiDetection>[];
 
   for (final entry in fields.entries) {
@@ -82,7 +82,8 @@ List<PiiDetection> detectPotentialPii(Map<String, String> fields) {
 
     // Check value patterns.
     for (final vp in _piiValuePatterns) {
-      if (vp.pattern.hasMatch(entry.value)) {
+      final valueText = entry.value is String ? entry.value as String : jsonEncode(entry.value);
+      if (vp.pattern.hasMatch(valueText)) {
         detections.add(PiiDetection(
           piiType: vp.type,
           field: entry.key,

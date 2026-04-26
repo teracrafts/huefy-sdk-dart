@@ -1,4 +1,4 @@
-# huefy_dart
+# huefy
 
 Official Dart SDK for [Huefy](https://huefy.dev) — transactional email delivery made simple.
 
@@ -7,14 +7,14 @@ Works in both server-side Dart and Flutter.
 ## Installation
 
 ```bash
-dart pub add huefy_dart
+dart pub add huefy
 ```
 
 Or add to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  huefy_dart: ^1.0.0
+  huefy: ^1.0.0
 ```
 
 Then:
@@ -31,22 +31,18 @@ dart pub get
 ## Quick Start
 
 ```dart
-import 'package:huefy_dart/huefy_dart.dart';
+import 'package:huefy/huefy.dart';
 
 void main() async {
-  final client = HuefyEmailClient(
-    config: HuefyConfig(apiKey: 'sdk_your_api_key'),
-  );
+  final client = HuefyEmailClient(HuefyConfig(apiKey: 'sdk_your_api_key'));
 
   final response = await client.sendEmail(
-    SendEmailRequest(
-      templateKey: 'welcome-email',
-      recipient: const Recipient(email: 'alice@example.com', name: 'Alice'),
-      variables: const {'firstName': 'Alice', 'trialDays': 14},
-    ),
+    templateKey: 'welcome-email',
+    data: const {'firstName': 'Alice', 'trialDays': 14},
+    recipient: 'alice@example.com',
   );
 
-  print('Message ID: ${response.messageId}');
+  print('Email ID: ${response.data.emailId}');
   client.close();
 }
 ```
@@ -86,27 +82,20 @@ void main() async {
 
 ```dart
 final bulk = await client.sendBulkEmails(
-  BulkEmailRequest(
-    emails: [
-      SendEmailRequest(
-        templateKey: 'promo',
-        recipient: const Recipient(email: 'bob@example.com'),
-      ),
-      SendEmailRequest(
-        templateKey: 'promo',
-        recipient: const Recipient(email: 'carol@example.com'),
-      ),
-    ],
-  ),
+  templateKey: 'promo',
+  recipients: const [
+    BulkRecipient(email: 'bob@example.com'),
+    BulkRecipient(email: 'carol@example.com'),
+  ],
 );
 
-print('Sent: ${bulk.totalSent}, Failed: ${bulk.totalFailed}');
+print('Sent: ${bulk.data.successCount}, Failed: ${bulk.data.failureCount}');
 ```
 
 ## Error Handling
 
 ```dart
-import 'package:huefy_dart/huefy_dart.dart';
+import 'package:huefy/huefy.dart';
 
 try {
   final response = await client.sendEmail(request);
@@ -139,14 +128,14 @@ try {
 
 ```dart
 final health = await client.healthCheck();
-if (health.status != 'healthy') {
-  debugPrint('Huefy degraded: ${health.status}');
+if (health.data.status != 'healthy') {
+  debugPrint('Huefy degraded: ${health.data.status}');
 }
 ```
 
 ## Local Development
 
-Set `HUEFY_MODE=local` to point the SDK at a local Huefy server, or override `baseUrl` in config:
+`HUEFY_MODE=local` resolves to `https://api.huefy.on/api/v1/sdk` in the current SDK. To target localhost, override `baseUrl` in config:
 
 ```dart
 final client = HuefyEmailClient(

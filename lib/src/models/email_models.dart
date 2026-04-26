@@ -9,7 +9,7 @@ class SendEmailRequest {
   final String recipient;
 
   /// Template data variables to merge into the email.
-  final Map<String, String> data;
+  final Map<String, dynamic> data;
 
   /// The email provider to use. Defaults to SES if not specified.
   final EmailProvider? providerType;
@@ -24,12 +24,12 @@ class SendEmailRequest {
   /// Converts this request to a JSON-compatible map.
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{
-      'template_key': templateKey,
+      'templateKey': templateKey,
       'recipient': recipient,
       'data': data,
     };
     if (providerType != null) {
-      json['provider_type'] = providerType!.value;
+      json['providerType'] = providerType!.value;
     }
     return json;
   }

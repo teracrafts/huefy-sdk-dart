@@ -100,6 +100,30 @@ void main() {
         expect(request.recipient, equals('john@example.com'));
         expect(request.providerType, isNull);
       });
+
+      test('serializes single-send requests with camelCase keys', () {
+        final request = SendEmailRequest(
+          templateKey: 'welcome',
+          data: {
+            'name': 'John',
+            'count': 2,
+            'beta': true,
+          },
+          recipient: 'john@example.com',
+          providerType: EmailProvider.sendgrid,
+        );
+
+        final json = request.toJson();
+        expect(json['templateKey'], equals('welcome'));
+        expect(json['providerType'], equals('sendgrid'));
+        expect(json.containsKey('template_key'), isFalse);
+        expect(json.containsKey('provider_type'), isFalse);
+
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['name'], equals('John'));
+        expect(data['count'], equals(2));
+        expect(data['beta'], isTrue);
+      });
     });
   });
 }

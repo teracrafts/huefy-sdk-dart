@@ -79,6 +79,17 @@ void main() {
       expect(validateEmailData({'name': 'John'}), isNull);
     });
 
+    test('returns null for structured data', () {
+      expect(
+        validateEmailData({
+          'count': 2,
+          'beta': true,
+          'profile': {'plan': 'pro'},
+        }),
+        isNull,
+      );
+    });
+
     test('returns error for null data', () {
       expect(validateEmailData(null), isNotNull);
     });
@@ -109,7 +120,7 @@ void main() {
     });
 
     test('returns error for count over limit', () {
-      final result = validateBulkCount(101);
+      final result = validateBulkCount(1001);
       expect(result, isNotNull);
       expect(result, contains('maximum'));
     });
@@ -122,7 +133,7 @@ void main() {
     test('returns empty list for valid input', () {
       final errors = validateSendEmailInput(
         'welcome',
-        {'name': 'John'},
+        {'name': 'John', 'count': 2},
         'user@example.com',
       );
       expect(errors, isEmpty);

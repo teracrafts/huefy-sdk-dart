@@ -57,7 +57,7 @@ String? validateTemplateKey(String key) {
 /// Validates template data.
 ///
 /// Returns `null` if valid, or an error message string if invalid.
-String? validateEmailData(Map<String, String>? data) {
+String? validateEmailData(Map<String, dynamic>? data) {
   if (data == null) {
     return 'template data is required';
   }
@@ -82,7 +82,7 @@ String? validateBulkCount(int count) {
 /// Returns a list of error message strings. Empty if all inputs are valid.
 List<String> validateSendEmailInput(
   String templateKey,
-  Map<String, String>? data,
+  Map<String, dynamic>? data,
   String recipient,
 ) {
   final errors = <String>[];

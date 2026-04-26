@@ -53,7 +53,7 @@ class HuefyEmailClient {
   /// Throws [HuefyError] on validation or network failures.
   Future<SendEmailResponse> sendEmail({
     required String templateKey,
-    required Map<String, String> data,
+    required Map<String, dynamic> data,
     required String recipient,
     EmailProvider? provider,
   }) async {
