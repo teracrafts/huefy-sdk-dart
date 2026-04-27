@@ -85,7 +85,9 @@ class RetryHandler {
     final jitterFactor =
         jitterMin + _random.nextDouble() * (jitterMax - jitterMin);
 
-    return Duration(milliseconds: (cappedMs * jitterFactor).toInt());
+    return Duration(
+      milliseconds: min((cappedMs * jitterFactor).toInt(), maxDelay.inMilliseconds),
+    );
   }
 
   /// Parses a `Retry-After` header value into a [Duration].

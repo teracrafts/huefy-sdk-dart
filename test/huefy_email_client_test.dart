@@ -98,6 +98,7 @@ void main() {
         expect(request.templateKey, equals('welcome'));
         expect(request.data, equals({'name': 'John'}));
         expect(request.recipient, equals('john@example.com'));
+        expect(request.recipientObject, isNull);
         expect(request.providerType, isNull);
       });
 
@@ -123,6 +124,25 @@ void main() {
         expect(data['name'], equals('John'));
         expect(data['count'], equals(2));
         expect(data['beta'], isTrue);
+      });
+
+      test('serializes recipient objects when provided', () {
+        final request = SendEmailRequest.withRecipientObject(
+          templateKey: 'welcome',
+          data: {'name': 'John'},
+          recipient: const SendEmailRecipient(
+            email: 'john@example.com',
+            type: 'cc',
+            data: {'segment': 'vip'},
+          ),
+          providerType: EmailProvider.ses,
+        );
+
+        final json = request.toJson();
+        final recipient = json['recipient'] as Map<String, dynamic>;
+        expect(recipient['email'], equals('john@example.com'));
+        expect(recipient['type'], equals('cc'));
+        expect((recipient['data'] as Map<String, dynamic>)['segment'], equals('vip'));
       });
     });
   });

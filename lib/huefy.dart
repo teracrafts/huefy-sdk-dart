@@ -10,7 +10,7 @@
 /// );
 ///
 /// final health = await client.healthCheck();
-/// print(health.status);
+/// print(health.data.status);
 /// ```
 library huefy;
 

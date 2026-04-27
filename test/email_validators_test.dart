@@ -152,5 +152,36 @@ void main() {
       );
       expect(errors.length, equals(1));
     });
+
+    test('accepts structured recipient object', () {
+      final errors = validateSendEmailInput(
+        'welcome',
+        {'name': 'John'},
+        const SendEmailRecipient(
+          email: 'user@example.com',
+          type: 'cc',
+          data: {'segment': 'vip'},
+        ),
+      );
+      expect(errors, isEmpty);
+    });
+
+    test('rejects invalid structured recipient object email', () {
+      final errors = validateSendEmailInput(
+        'welcome',
+        {'name': 'John'},
+        const SendEmailRecipient(email: 'bad', type: 'cc'),
+      );
+      expect(errors.length, equals(1));
+    });
+
+    test('rejects invalid structured recipient object type', () {
+      final errors = validateSendEmailInput(
+        'welcome',
+        {'name': 'John'},
+        const SendEmailRecipient(email: 'user@example.com', type: 'weird'),
+      );
+      expect(errors, equals(['recipient type must be one of: to, cc, bcc']));
+    });
   });
 }

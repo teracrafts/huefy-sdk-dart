@@ -99,7 +99,7 @@ import 'package:huefy/huefy.dart';
 
 try {
   final response = await client.sendEmail(request);
-  print('Delivered: ${response.messageId}');
+  print('Delivered: ${response.data.emailId}');
 } on HuefyAuthError {
   print('Invalid API key');
 } on HuefyRateLimitError catch (e) {
@@ -135,13 +135,13 @@ if (health.data.status != 'healthy') {
 
 ## Local Development
 
-`HUEFY_MODE=local` resolves to `https://api.huefy.on/api/v1/sdk` in the current SDK. To target localhost, override `baseUrl` in config:
+`HUEFY_MODE=local` resolves to `https://api.huefy.on/api/v1/sdk`. To bypass Caddy and hit the raw app port directly, override `baseUrl` to `http://localhost:8080/api/v1/sdk`:
 
 ```dart
 final client = HuefyEmailClient(
   config: HuefyConfig(
     apiKey: 'sdk_local_key',
-    baseUrl: 'http://localhost:3000/api/v1/sdk',
+    baseUrl: 'https://api.huefy.on/api/v1/sdk',
   ),
 );
 ```

@@ -6,7 +6,10 @@ class SendEmailRequest {
   final String templateKey;
 
   /// The recipient email address.
-  final String recipient;
+  final String? recipient;
+
+  /// The structured recipient object supported by the API.
+  final SendEmailRecipient? recipientObject;
 
   /// Template data variables to merge into the email.
   final Map<String, dynamic> data;
@@ -17,15 +20,24 @@ class SendEmailRequest {
   SendEmailRequest({
     required this.templateKey,
     required this.data,
-    required this.recipient,
+    this.recipient,
+    this.recipientObject,
     this.providerType,
   });
+
+  SendEmailRequest.withRecipientObject({
+    required this.templateKey,
+    required this.data,
+    required SendEmailRecipient recipient,
+    this.providerType,
+  }) : recipient = null,
+       recipientObject = recipient;
 
   /// Converts this request to a JSON-compatible map.
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{
       'templateKey': templateKey,
-      'recipient': recipient,
+      'recipient': recipientObject?.toJson() ?? recipient,
       'data': data,
     };
     if (providerType != null) {
@@ -33,6 +45,24 @@ class SendEmailRequest {
     }
     return json;
   }
+}
+
+class SendEmailRecipient {
+  final String email;
+  final String? type;
+  final Map<String, dynamic>? data;
+
+  const SendEmailRecipient({
+    required this.email,
+    this.type,
+    this.data,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'email': email,
+        if (type != null && type!.trim().isNotEmpty) 'type': type,
+        if (data != null) 'data': data,
+      };
 }
 
 /// Status of a single recipient in an email send or bulk send operation.
@@ -125,25 +155,37 @@ class SendBulkEmailsResponseData {
   final String batchId;
   final String status;
   final String templateKey;
+  final int templateVersion;
+  final String senderUsed;
+  final bool senderVerified;
   final int totalRecipients;
+  final int processedCount;
   final int successCount;
   final int failureCount;
   final int suppressedCount;
   final String startedAt;
   final String? completedAt;
   final List<RecipientStatus> recipients;
+  final List<EmailError> errors;
+  final Map<String, dynamic>? metadata;
 
   const SendBulkEmailsResponseData({
     required this.batchId,
     required this.status,
     required this.templateKey,
+    required this.templateVersion,
+    required this.senderUsed,
+    required this.senderVerified,
     required this.totalRecipients,
+    required this.processedCount,
     required this.successCount,
     required this.failureCount,
     required this.suppressedCount,
     required this.startedAt,
     this.completedAt,
     required this.recipients,
+    this.errors = const [],
+    this.metadata,
   });
 
   factory SendBulkEmailsResponseData.fromJson(Map<String, dynamic> json) =>
@@ -151,7 +193,11 @@ class SendBulkEmailsResponseData {
         batchId: json['batchId'] as String,
         status: json['status'] as String,
         templateKey: json['templateKey'] as String,
+        templateVersion: json['templateVersion'] as int? ?? 0,
+        senderUsed: json['senderUsed'] as String? ?? '',
+        senderVerified: json['senderVerified'] as bool? ?? false,
         totalRecipients: json['totalRecipients'] as int,
+        processedCount: json['processedCount'] as int? ?? 0,
         successCount: json['successCount'] as int,
         failureCount: json['failureCount'] as int,
         suppressedCount: json['suppressedCount'] as int,
@@ -160,6 +206,31 @@ class SendBulkEmailsResponseData {
         recipients: (json['recipients'] as List)
             .map((r) => RecipientStatus.fromJson(r as Map<String, dynamic>))
             .toList(),
+        errors: (json['errors'] as List? ?? const [])
+            .map((r) => EmailError.fromJson(r as Map<String, dynamic>))
+            .toList(),
+        metadata: json['metadata'] as Map<String, dynamic>?,
+      );
+}
+
+class EmailError {
+  final String code;
+  final String message;
+  final String? recipient;
+  final Map<String, dynamic>? details;
+
+  const EmailError({
+    required this.code,
+    required this.message,
+    this.recipient,
+    this.details,
+  });
+
+  factory EmailError.fromJson(Map<String, dynamic> json) => EmailError(
+        code: json['code'] as String,
+        message: json['message'] as String,
+        recipient: json['recipient'] as String?,
+        details: json['details'] as Map<String, dynamic>?,
       );
 }
 

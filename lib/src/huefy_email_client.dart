@@ -54,12 +54,17 @@ class HuefyEmailClient {
   Future<SendEmailResponse> sendEmail({
     required String templateKey,
     required Map<String, dynamic> data,
-    required String recipient,
+    String? recipient,
+    SendEmailRecipient? recipientObject,
     EmailProvider? provider,
   }) async {
     _ensureNotClosed();
 
-    final errors = validateSendEmailInput(templateKey, data, recipient);
+    final errors = validateSendEmailInput(
+      templateKey,
+      data,
+      recipientObject ?? recipient,
+    );
     if (errors.isNotEmpty) {
       throw HuefyError.validation(
         message: 'Validation failed: ${errors.join("; ")}',
@@ -75,13 +80,35 @@ class HuefyEmailClient {
         'Consider removing or encrypting these fields.',
       );
     }
+    if (recipientObject?.data != null) {
+      final recipientPiiDetections = security.detectPotentialPii(recipientObject!.data!);
+      if (recipientPiiDetections.isNotEmpty) {
+        final fields = recipientPiiDetections.map((d) => d.toString()).join('; ');
+        _logger.warn(
+          'Potential PII detected in recipient template data: [$fields]. '
+          'Consider removing or encrypting these fields.',
+        );
+      }
+    }
 
-    final request = SendEmailRequest(
-      templateKey: templateKey.trim(),
-      data: data,
-      recipient: recipient.trim(),
-      providerType: provider,
-    );
+    final request =
+        recipientObject != null
+            ? SendEmailRequest.withRecipientObject(
+              templateKey: templateKey.trim(),
+              data: data,
+              recipient: SendEmailRecipient(
+                email: recipientObject.email.trim(),
+                type: recipientObject.type?.trim().toLowerCase(),
+                data: recipientObject.data,
+              ),
+              providerType: provider,
+            )
+            : SendEmailRequest(
+              templateKey: templateKey.trim(),
+              data: data,
+              recipient: recipient!.trim(),
+              providerType: provider,
+            );
 
     final responseBody = await _http.request(
       'POST',
