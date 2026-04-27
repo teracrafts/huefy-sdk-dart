@@ -98,6 +98,26 @@ String? validateRecipientObject(SendEmailRecipient? recipient) {
   return null;
 }
 
+String? validateBulkRecipient(BulkRecipient? recipient) {
+  if (recipient == null) {
+    return 'recipient email is required';
+  }
+
+  final emailErr = validateEmail(recipient.email);
+  if (emailErr != null) return emailErr;
+
+  final recipientType = recipient.type.trim().toLowerCase();
+  if (recipientType.isNotEmpty && !_validRecipientTypes.contains(recipientType)) {
+    return 'recipient type must be one of: to, cc, bcc';
+  }
+
+  if (recipient.data != null && recipient.data is! Map<String, dynamic>) {
+    return 'recipient data must be an object';
+  }
+
+  return null;
+}
+
 List<String> validateSendEmailInput(
   String templateKey,
   Map<String, dynamic>? data,

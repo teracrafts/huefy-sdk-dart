@@ -73,6 +73,21 @@ void main() {
         );
       });
 
+      test('throws on invalid recipient type', () {
+        final client = HuefyEmailClient(HuefyConfig(apiKey: 'sdk_test_key'));
+        expect(
+          () => client.sendBulkEmails(
+            templateKey: 'welcome',
+            recipients: [BulkRecipient(email: 'john@example.com', type: 'reply-to')],
+          ),
+          throwsA(
+            predicate(
+              (e) => e is HuefyError && e.message.contains('recipients[0]'),
+            ),
+          ),
+        );
+      });
+
       test('throws when client is closed', () {
         final client = HuefyEmailClient(HuefyConfig(apiKey: 'sdk_test_key'));
         client.close();

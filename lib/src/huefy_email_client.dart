@@ -136,9 +136,9 @@ class HuefyEmailClient {
     }
 
     for (var i = 0; i < recipients.length; i++) {
-      final emailErr = validateEmail(recipients[i].email);
-      if (emailErr != null) {
-        throw HuefyError.validation(message: 'recipients[$i]: $emailErr');
+      final recipientErr = validateBulkRecipient(recipients[i]);
+      if (recipientErr != null) {
+        throw HuefyError.validation(message: 'recipients[$i]: $recipientErr');
       }
     }
 
@@ -149,7 +149,15 @@ class HuefyEmailClient {
 
     final body = <String, dynamic>{
       'templateKey': templateKey.trim(),
-      'recipients': recipients.map((r) => r.toJson()).toList(),
+      'recipients': recipients
+          .map(
+            (r) => BulkRecipient(
+              email: r.email.trim(),
+              type: r.type.trim().toLowerCase(),
+              data: r.data,
+            ).toJson(),
+          )
+          .toList(),
       if (provider != null) 'providerType': provider.value,
     };
 
