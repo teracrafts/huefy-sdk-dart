@@ -1,22 +1,26 @@
 # Huefy Dart SDK Lab
 
-Exercises the core SDK capabilities and prints a pass/fail report.
+Verifies the core email contract through the real Dart email client against a local stub server.
 
 ## Run
 
 ```bash
-dart run sdk-lab/run.dart
+dart sdk-lab/run.dart
 ```
 
-from the `sdks/dart/` directory.
+from `sdks/dart/`.
 
 ## Scenarios
 
 1. Initialization
-2. Config validation
-3. HMAC signing
-4. Error sanitization
-5. PII detection
-6. Circuit breaker state
-7. Health check
-8. Cleanup
+2. Single-send contract shaping
+3. Bulk-send contract shaping
+4. Invalid single rejection
+5. Invalid bulk rejection
+6. Health request path behavior
+7. Cleanup
+
+## Notes
+
+- The lab uses a loopback stub server instead of the live API.
+- It checks serialized request bodies, parsed responses, and validation-before-transport behavior.
