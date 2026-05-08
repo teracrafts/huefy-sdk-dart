@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:http/http.dart' as http;
+
 import 'config.dart';
 import 'errors/huefy_error.dart';
 import 'http/http_client.dart';
@@ -37,14 +39,14 @@ class HuefyEmailClient {
   /// Creates a new [HuefyEmailClient] with the given configuration.
   ///
   /// Throws [HuefyError] if the configuration is invalid.
-  HuefyEmailClient(this._config) {
+  HuefyEmailClient(this._config, {http.Client? httpClient}) {
     if (_config.apiKey.isEmpty) {
       throw HuefyError.validation(
         message: 'API key is required',
         field: 'apiKey',
       );
     }
-    _http = SdkHttpClient(config: _config);
+    _http = SdkHttpClient(config: _config, innerClient: httpClient);
     _logger = _config.debug ? ConsoleLogger() : NoopLogger();
   }
 

@@ -2,6 +2,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+
 import '../lib/huefy.dart';
 
 const green = '\x1B[32m';
@@ -24,26 +26,22 @@ void fail(String label, String reason) {
 Future<void> main() async {
   print('=== Huefy Dart SDK Lab ===\n');
 
-  final server = await _StubServer.start();
+  final stub = _StubClient();
+  HuefyEmailClient? client;
   try {
-    HuefyEmailClient? client;
-    try {
-      client = _buildClient(server.baseUrl);
-      pass('Initialization');
-    } catch (e) {
-      fail('Initialization', '$e');
-    }
+    client = _buildClient(stub);
+    pass('Initialization');
+  } catch (e) {
+    fail('Initialization', '$e');
+  }
 
-    if (client != null) {
-      await _verifySingleSend(client, server);
-      await _verifyBulkSend(client, server);
-      await _verifyInvalidSingle(client, server);
-      await _verifyInvalidBulk(client, server);
-      await _verifyHealth(client, server);
-      await _verifyCleanup(client);
-    }
-  } finally {
-    await server.close();
+  if (client != null) {
+    await _verifySingleSend(client, stub);
+    await _verifyBulkSend(client, stub);
+    await _verifyInvalidSingle(client, stub);
+    await _verifyInvalidBulk(client, stub);
+    await _verifyHealth(client, stub);
+    await _verifyCleanup(client);
   }
 
   print('');
@@ -58,11 +56,11 @@ Future<void> main() async {
   }
 }
 
-HuefyEmailClient _buildClient(String baseUrl) {
+HuefyEmailClient _buildClient(_StubClient stub) {
   return HuefyEmailClient(
     HuefyConfig(
       apiKey: 'sdk_lab_test_key_xxxxxxxxxxxx',
-      baseUrl: baseUrl,
+      baseUrl: 'https://sdk-lab.invalid',
       timeout: const Duration(seconds: 2),
       retry: const RetryConfig(
         maxRetries: 0,
@@ -70,10 +68,11 @@ HuefyEmailClient _buildClient(String baseUrl) {
         maxDelay: Duration(milliseconds: 50),
       ),
     ),
+    httpClient: stub,
   );
 }
 
-Future<void> _verifySingleSend(HuefyEmailClient client, _StubServer server) async {
+Future<void> _verifySingleSend(HuefyEmailClient client, _StubClient stub) async {
   try {
     final response = await client.sendEmail(
       templateKey: ' welcome-email ',
@@ -87,12 +86,12 @@ Future<void> _verifySingleSend(HuefyEmailClient client, _StubServer server) asyn
       provider: EmailProvider.sendgrid,
     );
 
-    final body = server.lastBody('/emails/send');
+    final body = stub.lastBody('/emails/send');
     if (!response.success) {
       fail('Single-send contract shaping', 'stub response was not parsed as success');
       return;
     }
-    if (server.lastPath('/emails/send') != '/emails/send' ||
+    if (stub.lastPath('/emails/send') != '/emails/send' ||
         body == null ||
         body['templateKey'] != 'welcome-email' ||
         body['recipient'] != 'john@example.com' ||
@@ -112,7 +111,7 @@ Future<void> _verifySingleSend(HuefyEmailClient client, _StubServer server) asyn
   }
 }
 
-Future<void> _verifyBulkSend(HuefyEmailClient client, _StubServer server) async {
+Future<void> _verifyBulkSend(HuefyEmailClient client, _StubClient stub) async {
   try {
     await client.sendBulkEmails(
       templateKey: ' account-update ',
@@ -131,9 +130,9 @@ Future<void> _verifyBulkSend(HuefyEmailClient client, _StubServer server) async 
       provider: EmailProvider.ses,
     );
 
-    final body = server.lastBody('/emails/send-bulk');
+    final body = stub.lastBody('/emails/send-bulk');
     final recipients = body?['recipients'] as List<dynamic>?;
-    if (server.lastPath('/emails/send-bulk') != '/emails/send-bulk' ||
+    if (stub.lastPath('/emails/send-bulk') != '/emails/send-bulk' ||
         body == null ||
         body['templateKey'] != 'account-update' ||
         body['providerType'] != 'ses' ||
@@ -151,8 +150,8 @@ Future<void> _verifyBulkSend(HuefyEmailClient client, _StubServer server) async 
   }
 }
 
-Future<void> _verifyInvalidSingle(HuefyEmailClient client, _StubServer server) async {
-  final before = server.hitCount('/emails/send');
+Future<void> _verifyInvalidSingle(HuefyEmailClient client, _StubClient stub) async {
+  final before = stub.hitCount('/emails/send');
   try {
     await client.sendEmail(
       templateKey: 'welcome',
@@ -161,7 +160,7 @@ Future<void> _verifyInvalidSingle(HuefyEmailClient client, _StubServer server) a
     );
     fail('Invalid single rejection', 'expected validation failure');
   } catch (e) {
-    if (server.hitCount('/emails/send') != before) {
+    if (stub.hitCount('/emails/send') != before) {
       fail('Invalid single rejection', 'transport was called for invalid single input');
     } else if (e is! HuefyError || !e.message.contains('Validation failed')) {
       fail('Invalid single rejection', '$e');
@@ -171,8 +170,8 @@ Future<void> _verifyInvalidSingle(HuefyEmailClient client, _StubServer server) a
   }
 }
 
-Future<void> _verifyInvalidBulk(HuefyEmailClient client, _StubServer server) async {
-  final before = server.hitCount('/emails/send-bulk');
+Future<void> _verifyInvalidBulk(HuefyEmailClient client, _StubClient stub) async {
+  final before = stub.hitCount('/emails/send-bulk');
   try {
     await client.sendBulkEmails(
       templateKey: 'welcome',
@@ -186,7 +185,7 @@ Future<void> _verifyInvalidBulk(HuefyEmailClient client, _StubServer server) asy
     );
     fail('Invalid bulk rejection', 'expected validation failure');
   } catch (e) {
-    if (server.hitCount('/emails/send-bulk') != before) {
+    if (stub.hitCount('/emails/send-bulk') != before) {
       fail('Invalid bulk rejection', 'transport was called for invalid bulk input');
     } else if (e is! HuefyError || !e.message.contains('recipients[0]')) {
       fail('Invalid bulk rejection', '$e');
@@ -196,10 +195,10 @@ Future<void> _verifyInvalidBulk(HuefyEmailClient client, _StubServer server) asy
   }
 }
 
-Future<void> _verifyHealth(HuefyEmailClient client, _StubServer server) async {
+Future<void> _verifyHealth(HuefyEmailClient client, _StubClient stub) async {
   try {
     final health = await client.healthCheck();
-    if (server.lastPath('/health') != '/health' || health.data.status != 'healthy') {
+    if (stub.lastPath('/health') != '/health' || health.data.status != 'healthy') {
       fail('Health request path behavior', 'health request did not use expected path');
       return;
     }
@@ -223,22 +222,10 @@ Future<void> _verifyCleanup(HuefyEmailClient client) async {
   }
 }
 
-class _StubServer {
-  _StubServer._(this._server) {
-    _server.listen(_handle);
-  }
-
-  final HttpServer _server;
+class _StubClient extends http.BaseClient {
   final Map<String, int> _hitCounts = <String, int>{};
   final Map<String, String> _lastPaths = <String, String>{};
   final Map<String, Map<String, dynamic>> _lastBodies = <String, Map<String, dynamic>>{};
-
-  static Future<_StubServer> start() async {
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    return _StubServer._(server);
-  }
-
-  String get baseUrl => 'http://${_server.address.address}:${_server.port}';
 
   int hitCount(String path) => _hitCounts[path] ?? 0;
 
@@ -246,12 +233,13 @@ class _StubServer {
 
   Map<String, dynamic>? lastBody(String path) => _lastBodies[path];
 
-  Future<void> _handle(HttpRequest request) async {
-    final path = request.uri.path;
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final path = request.url.path;
     _hitCounts[path] = hitCount(path) + 1;
     _lastPaths[path] = path;
 
-    final body = await utf8.decoder.bind(request).join();
+    final body = await request.finalize().bytesToString();
     if (body.trim().isNotEmpty) {
       _lastBodies[path] = jsonDecode(body) as Map<String, dynamic>;
     }
@@ -263,13 +251,13 @@ class _StubServer {
       _ => '{"success":false}',
     };
 
-    request.response.statusCode = HttpStatus.ok;
-    request.response.headers.contentType = ContentType.json;
-    request.response.write(responseBody);
-    await request.response.close();
+    return http.StreamedResponse(
+      Stream<List<int>>.value(utf8.encode(responseBody)),
+      200,
+      request: request,
+      headers: const {'content-type': 'application/json'},
+    );
   }
-
-  Future<void> close() => _server.close(force: true);
 }
 
 const _singleSendResponse =

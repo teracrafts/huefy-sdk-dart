@@ -20,9 +20,9 @@ class SdkHttpClient {
   final RetryHandler _retryHandler;
 
   /// Creates a new [SdkHttpClient] from the given SDK configuration.
-  SdkHttpClient({required HuefyConfig config})
+  SdkHttpClient({required HuefyConfig config, http.Client? innerClient})
       : _config = config,
-        _inner = http.Client(),
+        _inner = innerClient ?? http.Client(),
         _circuitBreaker = CircuitBreaker(
           failureThreshold: config.circuitBreaker.failureThreshold,
           resetTimeout: config.circuitBreaker.resetTimeout,
