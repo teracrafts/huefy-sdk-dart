@@ -9,6 +9,16 @@ import '../lib/huefy.dart';
 const green = '\x1B[32m';
 const red = '\x1B[31m';
 const reset = '\x1B[0m';
+const _validProviders = <String>{
+  'ses',
+  'sendgrid',
+  'mailgun',
+  'mailchimp',
+};
+
+final bool _liveMode =
+    (Platform.environment['HUEFY_SDK_LAB_MODE'] ?? '').trim().toLowerCase() ==
+    'live';
 
 int passed = 0;
 int failed = 0;
@@ -25,23 +35,12 @@ void fail(String label, String reason) {
 
 Future<void> main() async {
   print('=== Huefy Dart SDK Lab ===\n');
+  print('Mode: ${_liveMode ? 'live' : 'contract'}\n');
 
-  final stub = _StubClient();
-  HuefyEmailClient? client;
-  try {
-    client = _buildClient(stub);
-    pass('Initialization');
-  } catch (e) {
-    fail('Initialization', '$e');
-  }
-
-  if (client != null) {
-    await _verifySingleSend(client, stub);
-    await _verifyBulkSend(client, stub);
-    await _verifyInvalidSingle(client, stub);
-    await _verifyInvalidBulk(client, stub);
-    await _verifyHealth(client, stub);
-    await _verifyCleanup(client);
+  if (_liveMode) {
+    await _runLive();
+  } else {
+    await _runContract();
   }
 
   print('');
@@ -56,7 +55,64 @@ Future<void> main() async {
   }
 }
 
-HuefyEmailClient _buildClient(_StubClient stub) {
+Future<void> _runContract() async {
+  final stub = _StubClient();
+  HuefyEmailClient? client;
+  try {
+    client = _buildContractClient(stub);
+    pass('Initialization');
+  } catch (e) {
+    fail('Initialization', '$e');
+  }
+
+  if (client != null) {
+    await _verifySingleSend(client, stub);
+    await _verifyBulkSend(client, stub);
+    await _verifyInvalidSingle(client, stub);
+    await _verifyInvalidBulk(client, stub);
+    await _verifyHealth(client, stub);
+    await _verifyContractCleanup(client);
+  }
+}
+
+Future<void> _runLive() async {
+  late final _LiveConfig live;
+  try {
+    live = _getLiveConfig();
+  } catch (e) {
+    fail('Initialization', '$e');
+    return;
+  }
+
+  HuefyEmailClient? client;
+  try {
+    client = HuefyEmailClient(
+      HuefyConfig(
+        apiKey: live.apiKey,
+        baseUrl: live.baseUrl,
+        timeout: const Duration(seconds: 10),
+        retry: const RetryConfig(
+          maxRetries: 0,
+          initialDelay: Duration(milliseconds: 50),
+          maxDelay: Duration(milliseconds: 50),
+        ),
+      ),
+    );
+    pass('Initialization');
+  } catch (e) {
+    fail('Initialization', '$e');
+    return;
+  }
+
+  await _verifyLiveHealth(client);
+  await _verifyLiveSingleSend(client, live);
+  await _verifyLiveBulkSend(client, live);
+  await _verifyLiveInvalidSingle(client, live);
+  await _verifyLiveInvalidBulk(client, live);
+  await _verifyLiveCleanup(client);
+}
+
+HuefyEmailClient _buildContractClient(_StubClient stub) {
   return HuefyEmailClient(
     HuefyConfig(
       apiKey: 'sdk_lab_test_key_xxxxxxxxxxxx',
@@ -208,7 +264,7 @@ Future<void> _verifyHealth(HuefyEmailClient client, _StubClient stub) async {
   }
 }
 
-Future<void> _verifyCleanup(HuefyEmailClient client) async {
+Future<void> _verifyContractCleanup(HuefyEmailClient client) async {
   try {
     client.close();
     await client.healthCheck();
@@ -220,6 +276,166 @@ Future<void> _verifyCleanup(HuefyEmailClient client) async {
       fail('Cleanup', '$e');
     }
   }
+}
+
+Future<void> _verifyLiveHealth(HuefyEmailClient client) async {
+  try {
+    final health = await client.healthCheck();
+    if (!health.success || health.data.status != 'healthy') {
+      fail('Health check', 'unexpected health response');
+      return;
+    }
+    pass('Health check');
+  } catch (e) {
+    fail('Health check', '$e');
+  }
+}
+
+Future<void> _verifyLiveSingleSend(HuefyEmailClient client, _LiveConfig live) async {
+  try {
+    final response = await client.sendEmail(
+      templateKey: live.templateKey,
+      data: {
+        'sdkLabMode': 'live',
+        'sdk': 'dart',
+        'operation': 'single',
+      },
+      recipient: live.recipient,
+      provider: live.provider,
+    );
+    if (!response.success || response.data.emailId.isEmpty) {
+      fail('Single send', 'unexpected send response');
+      return;
+    }
+    pass('Single send');
+  } catch (e) {
+    fail('Single send', '$e');
+  }
+}
+
+Future<void> _verifyLiveBulkSend(HuefyEmailClient client, _LiveConfig live) async {
+  try {
+    final response = await client.sendBulkEmails(
+      templateKey: live.templateKey,
+      recipients: [
+        BulkRecipient(
+          email: live.recipient,
+          type: 'to',
+          data: {
+            'sdkLabMode': 'live',
+            'sdk': 'dart',
+            'operation': 'bulk',
+          },
+        ),
+      ],
+      provider: live.provider,
+    );
+    if (!response.success ||
+        response.data.batchId.isEmpty ||
+        response.data.totalRecipients < 1) {
+      fail('Bulk send', 'unexpected bulk response');
+      return;
+    }
+    pass('Bulk send');
+  } catch (e) {
+    fail('Bulk send', '$e');
+  }
+}
+
+Future<void> _verifyLiveInvalidSingle(HuefyEmailClient client, _LiveConfig live) async {
+  try {
+    await client.sendEmail(
+      templateKey: live.templateKey,
+      data: {
+        'sdkLabMode': 'live',
+        'sdk': 'dart',
+        'operation': 'invalid-single',
+      },
+      recipient: 'not-an-email',
+      provider: live.provider,
+    );
+    fail('Invalid single rejection', 'expected validation failure');
+  } catch (e) {
+    if (e is HuefyError && e.message.toLowerCase().contains('invalid email')) {
+      pass('Invalid single rejection');
+    } else {
+      fail('Invalid single rejection', '$e');
+    }
+  }
+}
+
+Future<void> _verifyLiveInvalidBulk(HuefyEmailClient client, _LiveConfig live) async {
+  try {
+    await client.sendBulkEmails(
+      templateKey: live.templateKey,
+      recipients: const [],
+      provider: live.provider,
+    );
+    fail('Invalid bulk rejection', 'expected validation failure');
+  } catch (e) {
+    if (e is HuefyError && e.message.toLowerCase().contains('at least one email')) {
+      pass('Invalid bulk rejection');
+    } else {
+      fail('Invalid bulk rejection', '$e');
+    }
+  }
+}
+
+Future<void> _verifyLiveCleanup(HuefyEmailClient client) async {
+  try {
+    client.close();
+    await client.healthCheck();
+    fail('Cleanup', 'expected closed client to reject requests');
+  } catch (e) {
+    if (e is HuefyError && e.message.contains('Client has been closed')) {
+      pass('Cleanup');
+    } else {
+      fail('Cleanup', '$e');
+    }
+  }
+}
+
+_LiveConfig _getLiveConfig() {
+  final providerValue =
+      (Platform.environment['HUEFY_SDK_LIVE_PROVIDER'] ?? '').trim().toLowerCase();
+  if (providerValue.isNotEmpty && !_validProviders.contains(providerValue)) {
+    throw ArgumentError(
+      'HUEFY_SDK_LIVE_PROVIDER must be one of: ${_validProviders.join(', ')}',
+    );
+  }
+
+  return _LiveConfig(
+    apiKey: _requireEnv('HUEFY_SDK_LIVE_API_KEY'),
+    baseUrl: _requireEnv('HUEFY_SDK_LIVE_BASE_URL'),
+    templateKey: _requireEnv('HUEFY_SDK_LIVE_TEMPLATE_KEY'),
+    recipient: _requireEnv('HUEFY_SDK_LIVE_RECIPIENT'),
+    provider:
+        providerValue.isEmpty ? null : EmailProvider.fromValue(providerValue),
+  );
+}
+
+String _requireEnv(String name) {
+  final value = (Platform.environment[name] ?? '').trim();
+  if (value.isEmpty) {
+    throw ArgumentError('$name is required in live mode');
+  }
+  return value;
+}
+
+class _LiveConfig {
+  final String apiKey;
+  final String baseUrl;
+  final String templateKey;
+  final String recipient;
+  final EmailProvider? provider;
+
+  const _LiveConfig({
+    required this.apiKey,
+    required this.baseUrl,
+    required this.templateKey,
+    required this.recipient,
+    required this.provider,
+  });
 }
 
 class _StubClient extends http.BaseClient {
