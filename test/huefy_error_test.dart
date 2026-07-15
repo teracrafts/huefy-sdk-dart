@@ -19,5 +19,18 @@ void main() {
       expect(error.isRecoverable, isFalse);
       expect(error.message, contains('Quota exceeded'));
     });
+
+    test('maps quota payload before status-derived errors', () {
+      final error = HuefyError.fromStatus(
+        500,
+        '{"error":"Quota exceeded","code":"INSUFFICIENT_QUOTA"}',
+        requestId: 'req_456',
+      );
+
+      expect(error.errorCode, ErrorCode.insufficientQuota);
+      expect(error.statusCode, 500);
+      expect(error.requestId, 'req_456');
+      expect(error.isRecoverable, isFalse);
+    });
   });
 }

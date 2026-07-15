@@ -100,16 +100,19 @@ import 'package:huefy/huefy.dart';
 try {
   final response = await client.sendEmail(request);
   print('Delivered: ${response.data.emailId}');
-} on HuefyAuthError {
-  print('Invalid API key');
-} on HuefyRateLimitError catch (e) {
-  print('Rate limited. Retry after ${e.retryAfter}s');
-} on HuefyCircuitOpenError {
-  print('Circuit open — service unavailable, backing off');
-} on HuefyNetworkError catch (e) {
-  print('Network error: $e');
 } on HuefyError catch (e) {
-  print('Huefy error [${e.code}]: $e');
+  switch (e.errorCode) {
+    case ErrorCode.authentication:
+      print('Invalid API key');
+    case ErrorCode.insufficientQuota:
+      print('Quota exhausted. Upgrade or wait for the next billing period');
+    case ErrorCode.rateLimited:
+      print('Rate limited. Retry after ${e.retryAfter}s');
+    case ErrorCode.circuitBreakerOpen:
+      print('Circuit open — service unavailable, backing off');
+    default:
+      print('Huefy error [${e.errorCode.label}]: $e');
+  }
 }
 ```
 
@@ -117,12 +120,12 @@ try {
 
 | Class | Code | Meaning |
 |-------|------|---------|
-| `HuefyInitError` | 1001 | Client failed to initialise |
-| `HuefyAuthError` | 1102 | API key rejected |
-| `HuefyNetworkError` | 1201 | Upstream request failed |
-| `HuefyCircuitOpenError` | 1301 | Circuit breaker tripped |
-| `HuefyRateLimitError` | 2003 | Rate limit exceeded |
-| `HuefyTemplateMissingError` | 2005 | Template key not found |
+| `HuefyError` | `INSUFFICIENT_QUOTA` | Account or organization quota exhausted |
+| `HuefyError` | `AUTHENTICATION_ERROR` | API key rejected |
+| `HuefyError` | `RATE_LIMITED` | Rate limit exceeded |
+| `HuefyError` | `CIRCUIT_BREAKER_OPEN` | Circuit breaker tripped |
+| `HuefyError` | `NETWORK_ERROR`, `SERVER_ERROR`, `SERVICE_UNAVAILABLE` | Transport or upstream failure |
+| `HuefyError` | `VALIDATION_ERROR`, `AUTHORIZATION_ERROR`, `NOT_FOUND` | Request validation or authorization failure |
 
 ## Health Check
 

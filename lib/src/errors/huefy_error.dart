@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'error_code.dart';
 import 'error_sanitizer.dart';
 
@@ -127,6 +129,15 @@ class HuefyError implements Exception {
 
   /// Creates an error from an HTTP status code and response body.
   factory HuefyError.fromStatus(int statusCode, String body, {String? requestId}) {
+    if (_hasInsufficientQuotaCode(body)) {
+      return HuefyError._(
+        message: 'Insufficient quota: $body',
+        errorCode: ErrorCode.insufficientQuota,
+        statusCode: statusCode,
+        requestId: requestId,
+      );
+    }
+
     switch (statusCode) {
       case 401:
         return HuefyError._(
@@ -193,6 +204,16 @@ class HuefyError implements Exception {
           statusCode: statusCode,
           requestId: requestId,
         );
+    }
+  }
+
+  static bool _hasInsufficientQuotaCode(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      return decoded is Map<String, Object?> &&
+          decoded['code'] == ErrorCode.insufficientQuota.label;
+    } on FormatException {
+      return false;
     }
   }
 
