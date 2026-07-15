@@ -162,6 +162,13 @@ class HuefyError implements Exception {
           errorCode: ErrorCode.validation,
           requestId: requestId,
         );
+      case 402:
+        return HuefyError._(
+          message: 'Insufficient quota: $body',
+          errorCode: ErrorCode.insufficientQuota,
+          statusCode: 402,
+          requestId: requestId,
+        );
       case 429:
         return HuefyError._(
           message: 'Rate limit exceeded',

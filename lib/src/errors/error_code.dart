@@ -21,6 +21,9 @@ enum ErrorCode {
   /// Rate limit exceeded.
   rateLimited(3002),
 
+  /// Account or organization quota exhausted.
+  insufficientQuota(3003),
+
   /// Server-side error.
   serverError(4000),
 
@@ -69,6 +72,8 @@ enum ErrorCode {
         return 'NOT_FOUND';
       case ErrorCode.rateLimited:
         return 'RATE_LIMITED';
+      case ErrorCode.insufficientQuota:
+        return 'INSUFFICIENT_QUOTA';
       case ErrorCode.serverError:
         return 'SERVER_ERROR';
       case ErrorCode.serviceUnavailable:
